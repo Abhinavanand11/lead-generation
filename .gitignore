@@ -1,0 +1,25 @@
+# ─── Python ───
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.env
+.env.*
+
+# ─── Output files ───
+output/
+*.xlsx
+
+# ─── Node ───
+node_modules/
+dist/
+build/
+
+# ─── IDE ───
+.vscode/
+.idea/
+
+# ─── OS ───
+.DS_Store
+Thumbs.db
