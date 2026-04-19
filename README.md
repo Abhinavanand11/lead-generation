@@ -1,50 +1,44 @@
-# B2B Lead Generation API
+#  B2B Lead Generation System
 
-A FastAPI service that scrapes Google Maps and LinkedIn via Apify,
-normalises, deduplicates, and exports leads to a formatted Excel workbook.
+A full-stack B2B lead generation platform that scrapes leads from **Google Maps** and **LinkedIn**, processes them, and exports clean data to Excel — with a modern dashboard UI.
 
 ---
 
-## Project Structure
+##  Features
+
+* 🔍 Scrape leads from Google Maps & LinkedIn (via Apify)
+* 🧹 Data cleaning, validation & deduplication
+* 📞 Phone normalization (+91 format)
+* 📊 Excel export with multiple sheets
+* ⚡ FastAPI backend (production-ready)
+* 🎨 React dashboard (modern dark UI)
+* 📥 One-click download of leads
+
+---
+
+##  Project Structure
 
 ```
-project/
-├── app/
-│   ├── main.py              # FastAPI entrypoint
-│   ├── config.py            # Centralised env-based config
-│   ├── api/
-│   │   └── routes.py        # API endpoints
-│   ├── services/
-│   │   ├── pipeline.py      # Full pipeline orchestrator
-│   │   ├── google_maps.py   # Google Maps service wrapper
-│   │   └── linkedin.py      # LinkedIn service wrapper
-│   └── schemas/
-│       └── lead.py          # Pydantic request/response models
+b2b_lead_gen/
 │
-├── processing/              # Reused core modules (unchanged logic)
-│   ├── parser.py
-│   ├── validator.py
-│   ├── deduplicator.py
-│   └── phone_utils.py
+├── app/                    # FastAPI backend
+├── scraper/                # Google Maps & LinkedIn scrapers
+├── processing/             # Parser, validator, deduplicator
+├── exporter/               # Excel export logic
+├── scripts/                # CLI runner
 │
-├── exporter/
-│   └── excel_exporter.py    # Reused Excel export (unchanged logic)
+├── b2b-dashboard/          # React frontend
+│   ├── src/
+│   └── package.json
 │
-├── scraper/
-│   ├── google_maps_scraper.py
-│   └── linkedin_scraper.py
-│
-├── scripts/
-│   └── run_pipeline.py      # Optional CLI runner
-│
-├── config.py                # Root shim → delegates to app/config.py
 ├── requirements.txt
+├── .env.example
 └── README.md
 ```
 
 ---
 
-## Setup
+##  Backend Setup (FastAPI)
 
 ### 1. Install dependencies
 
@@ -52,146 +46,134 @@ project/
 pip install -r requirements.txt
 ```
 
+---
+
 ### 2. Configure environment
 
-Create a `.env` file in the project root:
+Create `.env` file:
 
 ```env
-# Required
 APIFY_API_TOKEN=your_apify_token_here
-
-# Optional overrides (shown with defaults)
-GOOGLE_MAPS_MAX_RESULTS=20
-GOOGLE_MAPS_QUERIES=restaurants in Connaught Place Delhi,gyms in Hauz Khas Delhi
-LINKEDIN_MAX_RESULTS=25
-LINKEDIN_KEYWORDS_1=Founder
-LINKEDIN_LOCATION_1=Mumbai
-LINKEDIN_KEYWORDS_2=CTO
-LINKEDIN_LOCATION_2=Bangalore
-DEFAULT_COUNTRY_CODE=+91
-OUTPUT_DIR=output
-OUTPUT_FILENAME=leads.xlsx
-MAX_RETRIES=3
-RETRY_DELAY_S=5
 ```
 
 ---
 
-## Running the API server
+### 3. Run server
 
 ```bash
-# From the project root
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --port 8000
 ```
-
-Interactive docs available at:
-- Swagger UI: http://localhost:8000/docs
-- ReDoc:      http://localhost:8000/redoc
 
 ---
 
-## API Endpoints
+### 4. API Docs
 
-### `GET /health`
-Liveness check.
+* Swagger: http://localhost:8000/docs
+* Health: http://localhost:8000/health
+
+---
+
+##  Frontend Setup (React Dashboard)
 
 ```bash
-curl http://localhost:8000/health
+cd b2b-dashboard
+npm install
+npm run dev
 ```
 
-**Response:**
+Open:
+
+```
+http://localhost:5173
+```
+
+---
+
+##  API Endpoints
+
+### ➤ POST `/scrape`
+
+Run scraping pipeline
+
 ```json
 {
-  "status": "ok",
-  "apify_token_set": true
+  "queries": ["gyms in Delhi"],
+  "linkedin_searches": [
+    { "keywords": "Founder", "location": "Delhi", "max_results": 10 }
+  ],
+  "include_leads_preview": true
 }
 ```
 
 ---
 
-### `POST /scrape`
-Run the full pipeline. Uses config defaults when `queries` / `linkedin_searches` are empty.
+### ➤ GET `/download`
 
-```bash
-# Use config defaults
-curl -X POST http://localhost:8000/scrape \
-  -H "Content-Type: application/json" \
-  -d '{}'
+Download Excel file
+
+---
+
+### ➤ GET `/health`
+
+Check API status
+
+---
+
+##  Excel Output
+
+Generated file includes:
+
+| Sheet      | Description              |
+| ---------- | ------------------------ |
+| All Leads  | All unique leads         |
+| No Website | Leads without website    |
+| With Phone | Leads with phone numbers |
+| Summary    | Stats                    |
+
+---
+
+##  Example Usage
+
+### Google Maps queries:
+
+```
+digital marketing agency in Delhi
+software companies in Bangalore
 ```
 
-```bash
-# Custom queries + preview first 20 leads
-curl -X POST http://localhost:8000/scrape \
-  -H "Content-Type: application/json" \
-  -d '{
-    "queries": ["gyms in Delhi", "dental clinics in Mumbai"],
-    "linkedin_searches": [
-      {"keywords": "CTO", "location": "Bangalore", "max_results": 15}
-    ],
-    "include_leads_preview": true
-  }'
-```
+### LinkedIn input:
 
-**Response:**
 ```json
-{
-  "status": "success",
-  "total_leads": 47,
-  "output_file": "/absolute/path/to/output/leads.xlsx",
-  "stats": {
-    "google_maps_raw": 40,
-    "linkedin_raw": 15,
-    "parsed": 55,
-    "valid": 50,
-    "rejected": 5,
-    "duplicates_removed": 3,
-    "unique": 47
-  },
-  "leads": [...]   // only present when include_leads_preview=true
-}
+[
+  { "keywords": "Founder", "location": "Delhi", "max_results": 10 }
+]
 ```
 
 ---
 
-### `GET /download`
-Download the most recently generated Excel file.
+##  Environment Variables
 
-```bash
-curl -OJ http://localhost:8000/download
-```
-
-Returns `404` if no file has been generated yet. Run `/scrape` first.
-
----
-
-## CLI Runner (no server needed)
-
-```bash
-python scripts/run_pipeline.py
-python scripts/run_pipeline.py --queries "cafes in Delhi" "gyms in Mumbai"
-python scripts/run_pipeline.py --no-linkedin
-```
+| Variable        | Description           |
+| --------------- | --------------------- |
+| APIFY_API_TOKEN | Required for scraping |
+| OUTPUT_DIR      | Excel output folder   |
+| OUTPUT_FILENAME | Output file name      |
 
 ---
 
-## Excel Output
+##  Tech Stack
 
-The exported workbook contains four sheets:
+### Backend
 
-| Sheet              | Contents                                    |
-|--------------------|---------------------------------------------|
-| All Leads          | Every unique validated lead                 |
-| No Website Leads   | Leads without a website — good for outreach |
-| Leads With Phone   | Leads that have a normalised phone number   |
-| Summary            | Run statistics (counts per source, etc.)    |
+* FastAPI
+* Apify Client
+* OpenPyXL
+* Pydantic
 
----
+### Frontend
 
-## Architecture Notes
+* React (Vite)
+* Tailwind CSS
+* Framer Motion
+* Lucide Icons
 
-- **Async-safe**: `/scrape` runs the blocking pipeline in `asyncio.to_thread`
-  so the event loop stays responsive for other requests.
-- **Zero logic changes**: `processing/`, `exporter/`, and `scraper/` modules
-  are used exactly as-is. Only the wiring layer is new.
-- **Config shim**: The root `config.py` re-exports everything from `app/config.py`
-  so legacy `import config` statements in scrapers continue to work.
